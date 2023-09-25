@@ -1,0 +1,1 @@
+java -DlogLevel=info -DpatternFile=C:\Projects\LogSplitter\Patterns.xlsx -jar C:\Projects\LogSplitter\target\LogSplitter-1.0-jar-with-dependencies.jar
