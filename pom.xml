@@ -68,6 +68,8 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                     <finalName>${project.build.finalName}</finalName>
+     <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
                             <mainClass>com.wiiisdom.logsplitter.LogSplitterUI</mainClass>
