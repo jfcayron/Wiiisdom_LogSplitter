@@ -51,6 +51,8 @@ public class Helper {
     static final Logger LOGGER = Logger.getLogger("");
 
     // Excel Column Headers
+    static final String HDR_DELTA_CAUSE = "ObjDeltaCause";
+    static final String HDR_DELTA_TIME = "ObjDeltaDatetime";
     static final String HDR_OPEN_TIME = "ObjOpenDatetime";
     static final String HDR_CLOSE_TIME = "ObjCloseDatetime";
     static final String HDR_INSERT_TIME = "ObjInsertDatetime";
@@ -66,6 +68,8 @@ public class Helper {
 
     static final String PATTERN_PARAMETERS = ".*Eyes Parameters : \\[(?<eyesParam>.*?) \\]";
     static Pattern pattern_parameters = Pattern.compile(PATTERN_PARAMETERS, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_DELTA_REASON = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Extraction of the object (?<objID>\\d*) because it('s a| has been) (?<cause>.*?) .*?";
+    static Pattern pattern_delta_reason = Pattern.compile(PATTERN_DELTA_REASON, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_OPENING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Opening (?<objType>.*?): (?<objID>\\d*)#(?<objPath>.*?) \\(type:(?<pathType>.*?)\\)";
     static Pattern pattern_opening = Pattern.compile(PATTERN_OPENING);
     static final String PATTERN_CLOSING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Close (?<objType>.*?): ?(?<objID>\\d*) \\[Extraction time : (?<extrTime>\\d*) s\\]";
@@ -104,14 +108,16 @@ public class Helper {
             InsertRowMain(key, false);
         }
         for (int iX = 0; iX < workbook.getNumberOfSheets(); iX++) {
-            XSSFSheet sheet=workbook.getSheetAt(iX);
-            XSSFRow row=sheet.getRow(0);
-            int lastCol=row.getLastCellNum()-1;
+            XSSFSheet sheet = workbook.getSheetAt(iX);
+            XSSFRow row = sheet.getRow(0);
+            int lastCol = row.getLastCellNum() - 1;
             for (int iY = 0; iY <= lastCol; iY++) {
-               sheet.autoSizeColumn(iY);
-               if (sheet.getColumnWidth(iY)>40000) sheet.setColumnWidth(iY, 40000);
+                sheet.autoSizeColumn(iY);
+                if (sheet.getColumnWidth(iY) > 40000) {
+                    sheet.setColumnWidth(iY, 40000);
+                }
             }
-            
+
         }
         try (FileOutputStream out = new FileOutputStream(OutputFile)) {
             workbook.write(out);
@@ -160,6 +166,10 @@ public class Helper {
         cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_FOLDER_TYPE);
         cell = row.createCell(cellIndex++);
+        cell.setCellValue(HDR_DELTA_CAUSE);
+        cell = row.createCell(cellIndex++);
+        cell.setCellValue(HDR_DELTA_TIME);
+        cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_OPEN_TIME);
         cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_CLOSE_TIME);
@@ -190,7 +200,7 @@ public class Helper {
         try {
             try (FileInputStream file = new FileInputStream(new File(filePath))) {
                 LOGGER.log(Level.FINE, "Opening Patterns file: {0}", filePath);
-                
+
                 patternBook = new XSSFWorkbook(file);
                 patternSheet = patternBook.getSheetAt(0);
                 LOGGER.log(Level.FINE, "Opened Sheet{0}", patternSheet.getSheetName());
@@ -278,6 +288,11 @@ public class Helper {
                 return;
             }
         }
+        Matcher matchDelta = pattern_delta_reason.matcher(InputLine);
+        if (matchDelta.find()) {
+            ProcessDelta(matchDelta);
+            return;
+        }
         Matcher matchOpening = pattern_opening.matcher(InputLine);
         if (matchOpening.find()) {
             ProcessOpening(matchOpening);
@@ -329,6 +344,28 @@ public class Helper {
         }
     }
 
+    private static void ProcessDelta(Matcher matchDelta) {
+        LOGGER.fine("Starting DELTA Processing");
+        LOGGER.fine(LocalDateTime.parse(matchDelta.group("dateTime"), dateFormatter).toString());
+        LOGGER.fine(matchDelta.group("objID"));
+        LOGGER.fine(matchDelta.group("cause"));
+        QueuedItem logObject = new QueuedItem(
+                Integer.valueOf(matchDelta.group("objID")),
+                "",
+                "",
+                "",
+                matchDelta.group("cause"),
+                LocalDateTime.parse(matchDelta.group("dateTime"), dateFormatter),
+                LocalDateTime.MIN,
+                LocalDateTime.MIN,
+                LocalDateTime.MIN,
+                -1,
+                -1,
+                logObjects.size() + 1
+        );
+        logObjects.put(logObject.getObjectID(), logObject);
+    }
+
     private static void ProcessOpening(Matcher matchOpening) {
         LOGGER.fine("Starting OPENING Processing");
         LOGGER.fine(LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter).toString());
@@ -336,15 +373,29 @@ public class Helper {
         LOGGER.fine(matchOpening.group("objID"));
         LOGGER.fine(matchOpening.group("objPath"));
         LOGGER.fine(matchOpening.group("pathType"));
-        QueuedItem logObject = new QueuedItem(
-                Integer.valueOf(matchOpening.group("objID")),
-                matchOpening.group("objType"),
-                matchOpening.group("objPath"),
-                matchOpening.group("pathType"),
-                LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter),
-                logObjects.size() + 1
-        );
-        logObjects.put(logObject.getObjectID(), logObject);
+        QueuedItem queuedItem = logObjects.get(Integer.valueOf(matchOpening.group("objID")));
+        if (queuedItem != null) {
+            queuedItem.setOpenTime(LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter));
+            queuedItem.setObjectType(matchOpening.group("objType"));
+            queuedItem.setObjectPath(matchOpening.group("objPath"));
+            queuedItem.setFolderType(matchOpening.group("pathType"));
+        } else {
+            QueuedItem logObject = new QueuedItem(
+                    Integer.valueOf(matchOpening.group("objID")),
+                    matchOpening.group("objType"),
+                    matchOpening.group("objPath"),
+                    matchOpening.group("pathType"),
+                    "",
+                    LocalDateTime.MIN,
+                    LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter),
+                    LocalDateTime.MIN,
+                    LocalDateTime.MIN,
+                    -1,
+                    -1,
+                    logObjects.size() + 1
+            );
+            logObjects.put(logObject.getObjectID(), logObject);
+        }
     }
 
     private static void ProcessClosing(Matcher matchClosing) {
@@ -356,16 +407,20 @@ public class Helper {
         QueuedItem queuedItem = logObjects.get(Integer.valueOf(matchClosing.group("objID")));
         if (queuedItem != null) {
             queuedItem.setCloseTime(LocalDateTime.parse(matchClosing.group("dateTime"), dateFormatter));
-            queuedItem.setExtractionDuration(Integer.parseInt(matchClosing.group("extrTime")));
+            queuedItem.setExtractionDuration(Integer.valueOf(matchClosing.group("extrTime")));
         } else {
             queuedItem = new QueuedItem(Integer.valueOf(matchClosing.group("objID")),
                     matchClosing.group("objType"),
+                    "",
+                    "",
+                    "",
+                    LocalDateTime.MIN,
                     LocalDateTime.MIN,
                     LocalDateTime.parse(matchClosing.group("dateTime"), dateFormatter),
                     LocalDateTime.MIN,
                     Integer.valueOf(matchClosing.group("extrTime")),
                     -1,
-                    logObjects.size()
+                    logObjects.size() + 1
             );
             LOGGER.log(Level.WARNING, "No Match found for Closing Object_ID {0}", matchClosing.group("objID"));
         }
@@ -381,16 +436,21 @@ public class Helper {
         QueuedItem logObject = logObjects.get(Integer.valueOf(matchInserting.group("objID")));
         if (logObject != null) {
             logObject.setInsertTime(LocalDateTime.parse(matchInserting.group("dateTime"), dateFormatter));
-            logObject.setInsertionDuration(Integer.parseInt(matchInserting.group("insertTime")));
+            logObject.setInsertionDuration(Integer.valueOf(matchInserting.group("insertTime")));
         } else {
             logObject = new QueuedItem(Integer.valueOf(matchInserting.group("objID")),
                     matchInserting.group("objType"),
+                    "",
+                    "",
+                    "",
+                    LocalDateTime.MIN,
+                    LocalDateTime.MIN,
                     LocalDateTime.MIN,
                     LocalDateTime.parse(matchInserting.group("dateTime"), dateFormatter),
-                    LocalDateTime.MIN,
-                    Integer.valueOf(matchInserting.group("insertTime")),
                     -1,
-                    logObjects.size());
+                    Integer.valueOf(matchInserting.group("insertTime")),
+                    logObjects.size() + 1
+            );
             LOGGER.log(Level.WARNING, "No Match found for Inserting Object_ID {0}", matchInserting.group("objID"));
         }
         logObjects.put(Integer.valueOf(matchInserting.group("objID")), logObject);
@@ -411,6 +471,11 @@ public class Helper {
         cell.setCellValue(logObject.getObjectType());
         cell = row.createCell(cellIndex++, CellType.STRING);
         cell.setCellValue(logObject.getFolderType());
+        cell = row.createCell(cellIndex++, CellType.STRING);
+        cell.setCellValue(logObject.getDeltaCause());
+        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+        cell.setCellValue(logObject.getDeltaTime());
+        cell.setCellStyle(dateStyle);
         cell = row.createCell(cellIndex++, CellType.NUMERIC);
         cell.setCellValue(logObject.getOpenTime());
         cell.setCellStyle(dateStyle);
@@ -492,34 +557,37 @@ public class Helper {
     private static class QueuedItem {
 
         private final Integer objectID;
-        private final String objectType;
-        private final String objectPath;
-        private final String folderType;
-        private final LocalDateTime openTime;
+        private String objectType;
+        private String objectPath;
+        private String folderType;
+        private final String deltaCause;
+        private final LocalDateTime deltaTime;
+        private LocalDateTime openTime;
         private LocalDateTime closeTime;
         private LocalDateTime insertTime;
         private Integer extractionDuration;
         private Integer insertionDuration;
         private final Integer numberInQueue;
 
-        public QueuedItem(Integer objectID, String objectType, String objectPath, String folderType, LocalDateTime openTime, Integer numberInQueue) {
+        public QueuedItem(
+                Integer objectID,
+                String objectType,
+                String objectPath,
+                String folderType,
+                String deltaCause,
+                LocalDateTime deltaTime,
+                LocalDateTime openTime,
+                LocalDateTime closeTime,
+                LocalDateTime insertTime,
+                Integer extractionDuration,
+                Integer insertionDuration,
+                Integer numberInQueue) {
             this.objectID = objectID;
             this.objectType = objectType;
             this.objectPath = objectPath;
             this.folderType = folderType;
-            this.openTime = openTime;
-            this.closeTime = LocalDateTime.MIN;
-            this.insertTime = LocalDateTime.MIN;
-            this.extractionDuration = -1;
-            this.insertionDuration = -1;
-            this.numberInQueue = numberInQueue;
-        }
-
-        public QueuedItem(Integer objectID, String objectType, LocalDateTime openTime, LocalDateTime closeTime, LocalDateTime insertTime, Integer extractionDuration, Integer insertionDuration, Integer numberInQueue) {
-            this.objectID = objectID;
-            this.objectType = objectType;
-            this.objectPath = "N/A";
-            this.folderType = "N/A";
+            this.deltaCause = deltaCause;
+            this.deltaTime = deltaTime;
             this.openTime = openTime;
             this.closeTime = closeTime;
             this.insertTime = insertTime;
@@ -528,39 +596,35 @@ public class Helper {
             this.numberInQueue = numberInQueue;
         }
 
-        public Integer getNumberInQueue() {
-            return numberInQueue;
+        public void setObjectType(String objectType) {
+            this.objectType = objectType;
         }
 
-        public LocalDateTime getCloseTime() {
-            return closeTime;
+        public void setObjectPath(String objectPath) {
+            this.objectPath = objectPath;
+        }
+
+        public void setFolderType(String folderType) {
+            this.folderType = folderType;
+        }
+
+        public void setOpenTime(LocalDateTime openTime) {
+            this.openTime = openTime;
         }
 
         public void setCloseTime(LocalDateTime closeTime) {
             this.closeTime = closeTime;
         }
 
-        public LocalDateTime getInsertTime() {
-            return insertTime;
-        }
-
         public void setInsertTime(LocalDateTime insertTime) {
             this.insertTime = insertTime;
         }
 
-        public int getExtractionDuration() {
-            return extractionDuration;
-        }
-
-        public void setExtractionDuration(int extractionDuration) {
+        public void setExtractionDuration(Integer extractionDuration) {
             this.extractionDuration = extractionDuration;
         }
 
-        public int getInsertionDuration() {
-            return insertionDuration;
-        }
-
-        public void setInsertionDuration(int insertionDuration) {
+        public void setInsertionDuration(Integer insertionDuration) {
             this.insertionDuration = insertionDuration;
         }
 
@@ -580,8 +644,36 @@ public class Helper {
             return folderType;
         }
 
+        public String getDeltaCause() {
+            return deltaCause;
+        }
+
+        public LocalDateTime getDeltaTime() {
+            return deltaTime;
+        }
+
         public LocalDateTime getOpenTime() {
             return openTime;
+        }
+
+        public LocalDateTime getCloseTime() {
+            return closeTime;
+        }
+
+        public LocalDateTime getInsertTime() {
+            return insertTime;
+        }
+
+        public int getExtractionDuration() {
+            return extractionDuration;
+        }
+
+        public int getInsertionDuration() {
+            return insertionDuration;
+        }
+
+        public Integer getNumberInQueue() {
+            return numberInQueue;
         }
     }
 
@@ -593,7 +685,11 @@ public class Helper {
         private final List< Field> fields;
         private boolean isFound;
 
-        public PatternEntry(String sheetName, String patternStr, Pattern pattern, List< Field> fields) {
+        public PatternEntry(
+                String sheetName,
+                String patternStr,
+                Pattern pattern,
+                List< Field> fields) {
             this.sheetName = sheetName;
             this.patternStr = patternStr;
             this.fields = fields;
@@ -634,7 +730,11 @@ public class Helper {
         private final CellStyle style;
         private final String dataType;
 
-        public Field(String name, CellType type, CellStyle style, String dataType) {
+        public Field(
+                String name,
+                CellType type,
+                CellStyle style,
+                String dataType) {
             this.name = name;
             this.type = type;
             this.style = style;
