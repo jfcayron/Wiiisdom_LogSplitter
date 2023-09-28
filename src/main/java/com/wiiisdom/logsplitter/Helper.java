@@ -227,33 +227,38 @@ public class Helper {
                         CellStyle style;
                         String dataType;
                         switch (cellIX) {
-                            case 0 ->
+                            case 0:
                                 sheetName = cell.getStringCellValue();
-                            case 1 ->
+                                break;
+                            case 1:
                                 patternStr = cell.getStringCellValue();
-                            default -> {
+                                break;
+                            default: {
                                 String value = cell.getStringCellValue();
                                 String prefix = value.substring(0, 2);
                                 switch (prefix) {
-                                    case "I_" -> { // integer
+                                    case "I_": { // integer
                                         type = CellType.NUMERIC;
                                         dataType = "I";
                                         style = integerStyle;
                                         value = value.substring(2);
                                     }
-                                    case "N_" -> {// decimal
+                                    break;
+                                    case "N_": {// decimal
                                         type = CellType.NUMERIC;
                                         dataType = "N";
                                         style = numberStyle;
                                         value = value.substring(2);
                                     }
-                                    case "D_" -> {// date
+                                    break;
+                                    case "D_": {// date
                                         type = CellType.NUMERIC;
                                         dataType = "D";
                                         style = dateStyle;
                                         value = value.substring(2);
                                     }
-                                    default -> {
+                                    break;
+                                    default: {
                                         type = CellType._NONE;
                                         dataType = "G";
                                         style = generalStyle;
@@ -523,13 +528,16 @@ public class Helper {
             Cell cell = row.createCell(iX - 1, field.getType());
             String value = matcher.group(iX);
             switch (field.getDataType()) {
-                case "D" ->
+                case "D":
                     cell.setCellValue(LocalDateTime.parse(value, dateFormatter));
-                case "N" ->
+                    break;
+                case "N":
                     cell.setCellValue(Double.parseDouble(value));
-                case "I" ->
+                    break;
+                case "I":
                     cell.setCellValue(Integer.parseInt(value));
-                default ->
+                    break;
+                default:
                     cell.setCellValue(value);
             }
             cell.setCellStyle(fields.get(iX - 1).getStyle());
