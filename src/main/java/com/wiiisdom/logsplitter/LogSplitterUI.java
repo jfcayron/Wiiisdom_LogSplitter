@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import org.apache.poi.ss.usermodel.BuiltinFormats;
 
 /**
  *
@@ -199,8 +198,7 @@ public class LogSplitterUI extends javax.swing.JFrame {
     }
 
     private FileNameExtensionFilter newFilter(String description, String... extensions) {
-        FileNameExtensionFilter filter = new FileNameExtensionFilter(description, extensions);
-        return filter;
+        return new FileNameExtensionFilter(description, extensions);
     }
 
     /**
@@ -220,22 +218,13 @@ public class LogSplitterUI extends javax.swing.JFrame {
 
                 }
             }
-        } catch (ClassNotFoundException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(LogSplitterUI.class
                     .getName()).log(java.util.logging.Level.SEVERE, null, ex);
 
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(LogSplitterUI.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
-
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(LogSplitterUI.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
-
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(LogSplitterUI.class
-                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
+        
         //</editor-fold>
 
         /* Create and display the form */
