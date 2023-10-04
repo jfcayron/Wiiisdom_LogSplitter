@@ -16,6 +16,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ public class Helper {
     static final String HDR_PATH = "ObjPath";
     static final String HDR_OBJ_TYPE = "ObjType";
     static final String HDR_FOLDER_TYPE = "FolderType";
+    static final String HDR_DELTA_DUR = "DeltaDurSec";
     static final String HDR_EXTRACT_DUR = "ExtractionDurSec";
     static final String HDR_INSERT_DUR = "InsertDurSec";
     static final String HDR_NUM_IN_QUEUE = "NumberInQueue";
@@ -175,6 +177,8 @@ public class Helper {
         cell.setCellValue(HDR_CLOSE_TIME);
         cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_INSERT_TIME);
+        cell = row.createCell(cellIndex++);
+        cell.setCellValue(HDR_DELTA_DUR);
         cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_EXTRACT_DUR);
         cell = row.createCell(cellIndex++);
@@ -490,8 +494,16 @@ public class Helper {
         cell = row.createCell(cellIndex++, CellType.NUMERIC);
         cell.setCellValue(logObject.getInsertTime());
         cell.setCellStyle(dateStyle);
+        if (logObject.getDeltaCause().isEmpty() || logObject.openTime.equals(LocalDateTime.MIN)) {
+            row.createCell(cellIndex++, CellType.BLANK);
+        } else {
+            cell = row.createCell(cellIndex++, CellType.NUMERIC);
+            cell.setCellValue(logObject.getDeltaTime().until(logObject.getOpenTime(), ChronoUnit.SECONDS));
+            cell.setCellStyle(integerStyle);
+        }
         cell = row.createCell(cellIndex++, CellType.NUMERIC);
         cell.setCellValue(logObject.getExtractionDuration());
+        cell.setCellStyle(integerStyle);
         cell = row.createCell(cellIndex++, CellType.NUMERIC);
         cell.setCellStyle(integerStyle);
         cell.setCellValue(logObject.getInsertionDuration());
