@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -31,6 +32,7 @@ public class LogSplitterUI extends javax.swing.JFrame {
     private boolean hasOutput = false;
     private JFileChooser inputChooser;
     private JFileChooser outputChooser;
+    private static Preferences preferences;
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -138,6 +140,8 @@ public class LogSplitterUI extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void onBrowseSourceClick(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_onBrowseSourceClick
+        File path = new File(preferences.get("InputDir",  System.getProperty("user.dir")));
+        inputChooser.setCurrentDirectory(path);
         int returnVal = inputChooser.showOpenDialog(pnlBase);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = inputChooser.getSelectedFile();
@@ -145,23 +149,26 @@ public class LogSplitterUI extends javax.swing.JFrame {
             txtSourceLog.setText(file.getAbsolutePath());
             hasInput = true;
             SetExecute();
-
+            preferences.put("InputDir", file.getParent());
         }
     }//GEN-LAST:event_onBrowseSourceClick
 
     private void onBrowseOutFolderClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_onBrowseOutFolderClicked
+        File path = new File(preferences.get("OutputDir", System.getProperty("user.dir")));
+        outputChooser.setCurrentDirectory(path);
         int returnVal = outputChooser.showSaveDialog(pnlBase);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = outputChooser.getSelectedFile();
-            String path = file.getAbsolutePath();
-            if (!path.substring(path.length() - 5).equalsIgnoreCase(".XLSX")) {
-                path = path.concat(".XLSX");
-                file = new File(path);
+            String fileName = file.getAbsolutePath();
+            if (!fileName.substring(fileName.length() - 5).equalsIgnoreCase(".XLSX")) {
+                fileName = fileName.concat(".XLSX");
+                file = new File(fileName);
             }
             Helper.setOutputFile(file);
-            txtOutFolder.setText(path);
+            txtOutFolder.setText(fileName);
             hasOutput = true;
             SetExecute();
+            preferences.put("OutputDir", file.getParent());
         }
     }//GEN-LAST:event_onBrowseOutFolderClicked
 
@@ -224,9 +231,8 @@ public class LogSplitterUI extends javax.swing.JFrame {
 
         }
         //</editor-fold>
-        
-        //</editor-fold>
 
+        preferences = Preferences.userNodeForPackage(LogSplitterUI.class);
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> {
             new LogSplitterUI().setVisible(true);

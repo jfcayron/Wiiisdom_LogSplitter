@@ -65,6 +65,8 @@ public class Helper {
     static final String HDR_EXTRACT_DUR = "ExtractionDurSec";
     static final String HDR_INSERT_DUR = "InsertDurSec";
     static final String HDR_NUM_IN_QUEUE = "NumberInQueue";
+    static final String HDR_POOL = "Pool";
+    static final String HDR_THREAD = "Thread";
     static final String HDR_PARAM_NAME = "Parameter";
     static final String HDR_PARAM_VALUE = "Value";
 
@@ -72,11 +74,11 @@ public class Helper {
     static Pattern pattern_parameters = Pattern.compile(PATTERN_PARAMETERS, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_DELTA_REASON = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Extraction of the object (?<objID>\\d*) because it('s a| has been) (?<cause>.*?) .*?";
     static Pattern pattern_delta_reason = Pattern.compile(PATTERN_DELTA_REASON, Pattern.CASE_INSENSITIVE);
-    static final String PATTERN_OPENING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Opening (?<objType>.*?): (?<objID>\\d*)#(?<objPath>.*?) \\(type:(?<pathType>.*?)\\)";
+    static final String PATTERN_OPENING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Opening (?<objType>.*?): (?<objID>\\d*)#(?<objPath>.*?) \\(type:(?<pathType>.*?)\\)";
     static Pattern pattern_opening = Pattern.compile(PATTERN_OPENING);
-    static final String PATTERN_CLOSING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Close (?<objType>.*?): ?(?<objID>\\d*) \\[Extraction time : (?<extrTime>\\d*) s\\]";
+    static final String PATTERN_CLOSING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Close (?<objType>.*?): ?(?<objID>\\d*) \\[Extraction time : (?<extrTime>\\d*) s\\]";
     static Pattern pattern_closing = Pattern.compile(PATTERN_CLOSING);
-    static final String PATTERN_INSERTING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Insert (?<objType>.*?) metadata in Eyes DB: (?<objID>\\d*) \\[Batch insertion time : (?<insertTime>\\d*) s\\]";
+    static final String PATTERN_INSERTING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Insert (?<objType>.*?) metadata in Eyes DB: (?<objID>\\d*) \\[Batch insertion time : (?<insertTime>\\d*) s\\]";
     static Pattern pattern_inserting = Pattern.compile(PATTERN_INSERTING);
     static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss,SSS";
     static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
@@ -185,6 +187,10 @@ public class Helper {
         cell.setCellValue(HDR_INSERT_DUR);
         cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_NUM_IN_QUEUE);
+        cell = row.createCell(cellIndex++);
+        cell.setCellValue(HDR_POOL);
+        cell = row.createCell(cellIndex++);
+        cell.setCellValue(HDR_THREAD);
         row = parameterSheet.createRow(0);
         cellIndex = 0;
         cell = row.createCell(cellIndex++);
@@ -263,7 +269,7 @@ public class Helper {
                                     }
                                     break;
                                     default: {
-                                        type = CellType._NONE;
+                                        type = CellType.STRING;
                                         dataType = "G";
                                         style = generalStyle;
                                     }
@@ -370,100 +376,108 @@ public class Helper {
                 LocalDateTime.MIN,
                 -1,
                 -1,
-                logObjects.size() + 1
+                logObjects.size() + 1,
+                Integer.valueOf(matchDelta.group("pool")),
+                Integer.valueOf(matchDelta.group("thread"))
         );
         logObjects.put(logObject.getObjectID(), logObject);
     }
 
-    private static void ProcessOpening(Matcher matchOpening) {
+    private static void ProcessOpening(Matcher matcher) {
         LOGGER.fine("Starting OPENING Processing");
-        LOGGER.fine(LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter).toString());
-        LOGGER.fine(matchOpening.group("objType"));
-        LOGGER.fine(matchOpening.group("objID"));
-        LOGGER.fine(matchOpening.group("objPath"));
-        LOGGER.fine(matchOpening.group("pathType"));
-        QueuedItem queuedItem = logObjects.get(Integer.valueOf(matchOpening.group("objID")));
+        LOGGER.fine(LocalDateTime.parse(matcher.group("dateTime"), dateFormatter).toString());
+        LOGGER.fine(matcher.group("objType"));
+        LOGGER.fine(matcher.group("objID"));
+        LOGGER.fine(matcher.group("objPath"));
+        LOGGER.fine(matcher.group("pathType"));
+        QueuedItem queuedItem = logObjects.get(Integer.valueOf(matcher.group("objID")));
         if (queuedItem != null) {
-            queuedItem.setOpenTime(LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter));
-            queuedItem.setObjectType(matchOpening.group("objType"));
-            queuedItem.setObjectPath(matchOpening.group("objPath"));
-            queuedItem.setFolderType(matchOpening.group("pathType"));
+            queuedItem.setOpenTime(LocalDateTime.parse(matcher.group("dateTime"), dateFormatter));
+            queuedItem.setObjectType(matcher.group("objType"));
+            queuedItem.setObjectPath(matcher.group("objPath"));
+            queuedItem.setFolderType(matcher.group("pathType"));
         } else {
             QueuedItem logObject = new QueuedItem(
-                    Integer.valueOf(matchOpening.group("objID")),
-                    matchOpening.group("objType"),
-                    matchOpening.group("objPath"),
-                    matchOpening.group("pathType"),
+                    Integer.valueOf(matcher.group("objID")),
+                    matcher.group("objType"),
+                    matcher.group("objPath"),
+                    matcher.group("pathType"),
                     "",
                     LocalDateTime.MIN,
-                    LocalDateTime.parse(matchOpening.group("dateTime"), dateFormatter),
+                    LocalDateTime.parse(matcher.group("dateTime"), dateFormatter),
                     LocalDateTime.MIN,
                     LocalDateTime.MIN,
                     -1,
                     -1,
-                    logObjects.size() + 1
+                    logObjects.size() + 1,
+                    Integer.valueOf(matcher.group("pool")),
+                    Integer.valueOf(matcher.group("thread"))
             );
             logObjects.put(logObject.getObjectID(), logObject);
         }
     }
 
-    private static void ProcessClosing(Matcher matchClosing) {
+    private static void ProcessClosing(Matcher matcher) {
         LOGGER.fine("Starting CLOSING Processing");
-        LOGGER.fine(LocalDateTime.parse(matchClosing.group("dateTime"), dateFormatter).toString());
-        LOGGER.fine(matchClosing.group("objType"));
-        LOGGER.fine(matchClosing.group("objID"));
-        LOGGER.fine(matchClosing.group("extrTime"));
-        QueuedItem queuedItem = logObjects.get(Integer.valueOf(matchClosing.group("objID")));
+        LOGGER.fine(LocalDateTime.parse(matcher.group("dateTime"), dateFormatter).toString());
+        LOGGER.fine(matcher.group("objType"));
+        LOGGER.fine(matcher.group("objID"));
+        LOGGER.fine(matcher.group("extrTime"));
+        QueuedItem queuedItem = logObjects.get(Integer.valueOf(matcher.group("objID")));
         if (queuedItem != null) {
-            queuedItem.setCloseTime(LocalDateTime.parse(matchClosing.group("dateTime"), dateFormatter));
-            queuedItem.setExtractionDuration(Integer.valueOf(matchClosing.group("extrTime")));
+            queuedItem.setCloseTime(LocalDateTime.parse(matcher.group("dateTime"), dateFormatter));
+            queuedItem.setExtractionDuration(Integer.valueOf(matcher.group("extrTime")));
         } else {
-            queuedItem = new QueuedItem(Integer.valueOf(matchClosing.group("objID")),
-                    matchClosing.group("objType"),
+            queuedItem = new QueuedItem(Integer.valueOf(matcher.group("objID")),
+                    matcher.group("objType"),
                     "",
                     "",
                     "",
                     LocalDateTime.MIN,
                     LocalDateTime.MIN,
-                    LocalDateTime.parse(matchClosing.group("dateTime"), dateFormatter),
+                    LocalDateTime.parse(matcher.group("dateTime"), dateFormatter),
                     LocalDateTime.MIN,
-                    Integer.valueOf(matchClosing.group("extrTime")),
+                    Integer.valueOf(matcher.group("extrTime")),
                     -1,
-                    logObjects.size() + 1
+                    logObjects.size() + 1,
+                    Integer.valueOf(matcher.group("pool")),
+                    Integer.valueOf(matcher.group("thread"))
             );
-            LOGGER.log(Level.WARNING, "No Match found for Closing Object_ID {0}", matchClosing.group("objID"));
+            LOGGER.log(Level.WARNING, "No Match found for Closing Object_ID {0}", matcher.group("objID"));
         }
-        logObjects.put(Integer.valueOf(matchClosing.group("objID")), queuedItem);
+        logObjects.put(Integer.valueOf(matcher.group("objID")), queuedItem);
     }
 
-    private static void ProcessInserting(Matcher matchInserting) {
+    private static void ProcessInserting(Matcher matcher) {
         LOGGER.fine("Starting INSERTING Processing");
-        LOGGER.fine(LocalDateTime.parse(matchInserting.group("dateTime"), dateFormatter).toString());
-        LOGGER.fine(matchInserting.group("objType"));
-        LOGGER.fine(matchInserting.group("objID"));
-        LOGGER.fine(matchInserting.group("insertTime"));
-        QueuedItem logObject = logObjects.get(Integer.valueOf(matchInserting.group("objID")));
+        LOGGER.fine(LocalDateTime.parse(matcher.group("dateTime"), dateFormatter).toString());
+        LOGGER.fine(matcher.group("objType"));
+        LOGGER.fine(matcher.group("objID"));
+        LOGGER.fine(matcher.group("insertTime"));
+        QueuedItem logObject = logObjects.get(Integer.valueOf(matcher.group("objID")));
         if (logObject != null) {
-            logObject.setInsertTime(LocalDateTime.parse(matchInserting.group("dateTime"), dateFormatter));
-            logObject.setInsertionDuration(Integer.valueOf(matchInserting.group("insertTime")));
+            logObject.setInsertTime(LocalDateTime.parse(matcher.group("dateTime"), dateFormatter));
+            logObject.setInsertionDuration(Integer.valueOf(matcher.group("insertTime")));
         } else {
-            logObject = new QueuedItem(Integer.valueOf(matchInserting.group("objID")),
-                    matchInserting.group("objType"),
+            logObject = new QueuedItem(Integer.valueOf(matcher.group("objID")),
+                    matcher.group("objType"),
                     "",
                     "",
                     "",
                     LocalDateTime.MIN,
                     LocalDateTime.MIN,
                     LocalDateTime.MIN,
-                    LocalDateTime.parse(matchInserting.group("dateTime"), dateFormatter),
+                    LocalDateTime.parse(matcher.group("dateTime"), dateFormatter),
                     -1,
-                    Integer.valueOf(matchInserting.group("insertTime")),
-                    logObjects.size() + 1
+                    Integer.valueOf(matcher.group("insertTime")),
+                    logObjects.size() + 1,
+                    Integer.valueOf(matcher.group("pool")),
+                    Integer.valueOf(matcher.group("thread"))
             );
-            LOGGER.log(Level.WARNING, "No Match found for Inserting Object_ID {0}", matchInserting.group("objID"));
+            LOGGER.log(Level.WARNING, "No Match found for Inserting Object_ID {0}", matcher.group("objID"));
         }
-        logObjects.put(Integer.valueOf(matchInserting.group("objID")), logObject);
-        InsertRowMain(Integer.valueOf(matchInserting.group("objID")), true);
+        logObjects.put(Integer.valueOf(matcher.group("objID")), logObject);
+        InsertRowMain(Integer.valueOf(matcher.group("objID")), true);
     }
 
     private static void InsertRowMain(Integer objID, boolean delEntry) {
@@ -510,6 +524,12 @@ public class Helper {
         cell = row.createCell(cellIndex++, CellType.NUMERIC);
         cell.setCellStyle(integerStyle);
         cell.setCellValue(logObject.getNumberInQueue());
+        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+        cell.setCellStyle(integerStyle);
+        cell.setCellValue(logObject.getPool());
+        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+        cell.setCellStyle(integerStyle);
+        cell.setCellValue(logObject.getThread());
         if (delEntry) {
             logObjects.remove(objID);
         }
@@ -520,12 +540,15 @@ public class Helper {
         if (!matcher.find()) {
             return false;
         }
+        LOGGER.log(Level.FINE, "Matched pattern {0}", patternEntry.getPatternStr());
+
         XSSFSheet sheet;
         if (patternEntry.isIsFound()) {
             sheet = workbook.getSheet(patternEntry.getSheetName());
         } else {
             patternEntry.setIsFound(true);
             sheet = workbook.createSheet(patternEntry.getSheetName());
+            LOGGER.log(Level.INFO, "Creating new sheet {0}", patternEntry.getSheetName());
             XSSFRow headerRow = sheet.createRow(0);
             int iX = 0;
             for (Field header : patternEntry.getFields()) {
@@ -588,6 +611,8 @@ public class Helper {
         private Integer extractionDuration;
         private Integer insertionDuration;
         private final Integer numberInQueue;
+        private final Integer pool;
+        private final Integer thread;
 
         public QueuedItem(
                 Integer objectID,
@@ -601,7 +626,9 @@ public class Helper {
                 LocalDateTime insertTime,
                 Integer extractionDuration,
                 Integer insertionDuration,
-                Integer numberInQueue) {
+                Integer numberInQueue,
+                Integer pool,
+                Integer thread) {
             this.objectID = objectID;
             this.objectType = objectType;
             this.objectPath = objectPath;
@@ -614,6 +641,8 @@ public class Helper {
             this.extractionDuration = extractionDuration;
             this.insertionDuration = insertionDuration;
             this.numberInQueue = numberInQueue;
+            this.pool = pool;
+            this.thread = thread;
         }
 
         public void setObjectType(String objectType) {
@@ -684,16 +713,24 @@ public class Helper {
             return insertTime;
         }
 
-        public int getExtractionDuration() {
+        public Integer getExtractionDuration() {
             return extractionDuration;
         }
 
-        public int getInsertionDuration() {
+        public Integer getInsertionDuration() {
             return insertionDuration;
         }
 
         public Integer getNumberInQueue() {
             return numberInQueue;
+        }
+
+        public Integer getPool() {
+            return pool;
+        }
+
+        public Integer getThread() {
+            return thread;
         }
     }
 
