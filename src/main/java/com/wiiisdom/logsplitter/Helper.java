@@ -72,7 +72,7 @@ public class Helper {
 
     static final String PATTERN_PARAMETERS = ".*Eyes Parameters : \\[(?<eyesParam>.*?) \\]";
     static Pattern pattern_parameters = Pattern.compile(PATTERN_PARAMETERS, Pattern.CASE_INSENSITIVE);
-    static final String PATTERN_DELTA_REASON = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}).*?Extraction of the object (?<objID>\\d*) because it('s a| has been) (?<cause>.*?) .*?";
+    static final String PATTERN_DELTA_REASON = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Extraction of the object (?<objID>\\d*) because it('s a| has been) (?<cause>.*?) .*?";
     static Pattern pattern_delta_reason = Pattern.compile(PATTERN_DELTA_REASON, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_OPENING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Opening (?<objType>.*?): (?<objID>\\d*)#(?<objPath>.*?) \\(type:(?<pathType>.*?)\\)";
     static Pattern pattern_opening = Pattern.compile(PATTERN_OPENING);
@@ -97,7 +97,7 @@ public class Helper {
 
     private static boolean hasParameters = false;
     private static final HashMap<Integer, QueuedItem> logObjects = new HashMap<>();
-    private static List<PatternEntry> patterns = new ArrayList<>();
+    private static final List<PatternEntry> patterns = new ArrayList<>();
 
     protected static void RunFile() throws FileNotFoundException, IOException {
         Initialize();
@@ -213,7 +213,7 @@ public class Helper {
 
                 patternBook = new XSSFWorkbook(file);
                 patternSheet = patternBook.getSheetAt(0);
-                LOGGER.log(Level.FINE, "Opened Sheet{0}", patternSheet.getSheetName());
+                LOGGER.log(Level.FINE, "Opened Sheet {0}", patternSheet.getSheetName());
                 boolean firstRow = true;
                 for (Row row : patternSheet) {
                     LOGGER.log(Level.FINE, "Starting Patterns row iterator");
@@ -232,6 +232,10 @@ public class Helper {
                     while (cellIterator.hasNext()) {
                         LOGGER.log(Level.FINE, "Handling pattern cell");
                         Cell cell = cellIterator.next();
+                        if (cell.getStringCellValue().isEmpty()) {
+                            LOGGER.log(Level.FINE, "Blank Cell: {0}", cell.getStringCellValue());
+                            continue;
+                        }
                         //Check the cell type and format accordingly
                         CellType type;
                         CellStyle style;
@@ -239,12 +243,15 @@ public class Helper {
                         switch (cellIX) {
                             case 0:
                                 sheetName = cell.getStringCellValue();
+                                LOGGER.log(Level.FINE, "Sheet Name: {0}", sheetName);
                                 break;
                             case 1:
                                 patternStr = cell.getStringCellValue();
+                                LOGGER.log(Level.FINE, "Pattern: {0}", patternStr);
                                 break;
                             default: {
                                 String value = cell.getStringCellValue();
+                                LOGGER.log(Level.FINE, "Column Name: {0}", value);
                                 String prefix = value.substring(0, 2);
                                 switch (prefix) {
                                     case "I_": { // integer
@@ -275,6 +282,8 @@ public class Helper {
                                     }
                                 }
                                 fields.add(new Field(value, type, style, dataType));
+                                LOGGER.log(Level.FINE, "Data Type: {0}", dataType);
+
                             }
                         }
                         cellIX++;
