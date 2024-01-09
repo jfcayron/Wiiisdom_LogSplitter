@@ -505,18 +505,22 @@ public class Helper {
         cell.setCellValue(logObject.getFolderType());
         cell = row.createCell(cellIndex++, CellType.STRING);
         cell.setCellValue(logObject.getDeltaCause());
-        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-        cell.setCellValue(logObject.getDeltaTime());
-        cell.setCellStyle(dateStyle);
-        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-        cell.setCellValue(logObject.getOpenTime());
-        cell.setCellStyle(dateStyle);
-        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-        cell.setCellValue(logObject.getCloseTime());
-        cell.setCellStyle(dateStyle);
-        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-        cell.setCellValue(logObject.getInsertTime());
-        cell.setCellStyle(dateStyle);
+        CreateTimeCell(row, logObject.getDeltaTime(), cellIndex++);
+//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+//        cell.setCellValue(logObject.getDeltaTime());
+//        cell.setCellStyle(dateStyle);
+        CreateTimeCell(row, logObject.getOpenTime(), cellIndex++);
+//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+//        cell.setCellValue(logObject.getOpenTime());
+//        cell.setCellStyle(dateStyle);
+        CreateTimeCell(row, logObject.getCloseTime(), cellIndex++);
+//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+//        cell.setCellValue(logObject.getCloseTime());
+//        cell.setCellStyle(dateStyle);
+        CreateTimeCell(row, logObject.getInsertTime(), cellIndex++);
+//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
+//        cell.setCellValue(logObject.getInsertTime());
+//        cell.setCellStyle(dateStyle);
         if (logObject.getDeltaCause().isEmpty() || logObject.openTime.equals(LocalDateTime.MIN)) {
             row.createCell(cellIndex++, CellType.BLANK);
         } else {
@@ -542,6 +546,18 @@ public class Helper {
         if (delEntry) {
             logObjects.remove(objID);
         }
+    }
+    
+    private static XSSFCell CreateTimeCell (XSSFRow row,LocalDateTime time, int cellIndex){
+        XSSFCell  cell=null;
+         if (time.equals(LocalDateTime.MIN)) {
+            row.createCell(cellIndex, CellType.BLANK);
+        } else {
+            cell = row.createCell(cellIndex, CellType.NUMERIC);
+            cell.setCellValue(time);
+            cell.setCellStyle(dateStyle);
+        }
+        return cell;
     }
 
     private static boolean CheckOnePattern(PatternEntry patternEntry, String inputLine) {
