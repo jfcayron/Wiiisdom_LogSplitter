@@ -28,6 +28,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFCell;
@@ -111,10 +112,15 @@ public class Helper {
         for (Integer key : logObjects.keySet()) {  // Write incomplete entries
             InsertRowMain(key, false);
         }
+        // after processing, format sheets and columns
         for (int iX = 0; iX < workbook.getNumberOfSheets(); iX++) {
             XSSFSheet sheet = workbook.getSheetAt(iX);
+            // Freeze top row
+            sheet.createFreezePane(0, 1);
             XSSFRow row = sheet.getRow(0);
+            int lastRow=sheet.getLastRowNum();
             int lastCol = row.getLastCellNum() - 1;
+            sheet.setAutoFilter(new CellRangeAddress(0,lastRow,0,lastCol));
             for (int iY = 0; iY <= lastCol; iY++) {
                 sheet.autoSizeColumn(iY);
                 if (sheet.getColumnWidth(iY) > 40000) {
@@ -547,10 +553,10 @@ public class Helper {
             logObjects.remove(objID);
         }
     }
-    
-    private static XSSFCell CreateTimeCell (XSSFRow row,LocalDateTime time, int cellIndex){
-        XSSFCell  cell=null;
-         if (time.equals(LocalDateTime.MIN)) {
+
+    private static XSSFCell CreateTimeCell(XSSFRow row, LocalDateTime time, int cellIndex) {
+        XSSFCell cell = null;
+        if (time.equals(LocalDateTime.MIN)) {
             row.createCell(cellIndex, CellType.BLANK);
         } else {
             cell = row.createCell(cellIndex, CellType.NUMERIC);
