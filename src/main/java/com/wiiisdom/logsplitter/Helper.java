@@ -148,9 +148,9 @@ public class Helper {
         workbook = new XSSFWorkbook();
         //
         dateFormat = workbook.createDataFormat();
-        dateFormat.putFormat((short) 127, "yyyy-MM-dd HH:mm:ss");
+        dateFormat.putFormat((short) 127, "yyyy-MM-dd HH:mm:ss   ");
         dateStyle = workbook.createCellStyle();
-        dateStyle.setDataFormat((short) 127);
+        dateStyle.setDataFormat((short) 127); // format created above
         //
         integerStyle = workbook.createCellStyle();
         integerStyle.setDataFormat((short) 3); //  "#,##0"
