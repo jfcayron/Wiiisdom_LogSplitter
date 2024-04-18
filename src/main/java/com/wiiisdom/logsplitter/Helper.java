@@ -71,8 +71,31 @@ public class Helper {
     static final String HDR_PARAM_NAME = "Parameter";
     static final String HDR_PARAM_VALUE = "Value";
 
+// Patterns for the Misc sheet
+    static final String PATTERN_ARGUMENTS = ".*Job's arguments : (?<jobArgs>.*?)$";
+    static Pattern pattern_arguments = Pattern.compile(PATTERN_ARGUMENTS, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_PROCESS = ".*360 job launched from (?<launch>.*?) on process (?<process>.*?)$";
+    static Pattern pattern_process = Pattern.compile(PATTERN_PROCESS, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_VERSION360 = ".*360eyes version: (?<version360>.*?)$";
+    static Pattern pattern_version360 = Pattern.compile(PATTERN_VERSION360, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_LICENSE = ".*LICENSE: key generated for (?<customer>.*?) only, valid until (?<endDate>.*?)$";
+    static Pattern pattern_license = Pattern.compile(PATTERN_LICENSE, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_BOBJ_VERSIONS = ".*CMS version: (?<versCMS>.*?), SDK Version: (?<versSDK>.*?)$";
+    static Pattern pattern_bobj_versions = Pattern.compile(PATTERN_BOBJ_VERSIONS, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_CLUSTER_SNAPSHOT_ID = ".*Config: Cluster: (?<cluster>.*?), BOVersion: (?<boVersion>.*?); Snapshot: (?<addReplace>.*?); SNAPSHOT_PERM_ID: (?<permID>.*?)\\(SNAPSHOT_ID: (?<snapID>.*?)\\)$";
+    static Pattern pattern_cluster_snapshot_id = Pattern.compile(PATTERN_CLUSTER_SNAPSHOT_ID, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_LOAD_MODE = ".*Loading Mode Choosing: lastResult==(?<lastLoad>.*?), loadingMode==(?<selectLoad>.*?) >> (?<actualLoad>.*?) mode \\[last snapshot date: (?<lastDate>.*?)\\]";
+    static Pattern pattern_load_mode = Pattern.compile(PATTERN_LOAD_MODE, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_PREVIOUS_SNAPSHOT = ".*Copying snapshot id (?<previousID>.*?)\\.\\.\\.";
+    static Pattern pattern_previous_snapshot = Pattern.compile(PATTERN_PREVIOUS_SNAPSHOT, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_RESTFUL = ".*URL found : (?<restURL>.*?)$";
+    static Pattern pattern_restful = Pattern.compile(PATTERN_RESTFUL, Pattern.CASE_INSENSITIVE);
+
+    // Pattern for the Eyes Parameters
     static final String PATTERN_PARAMETERS = ".*Eyes Parameters : \\[(?<eyesParam>.*?) \\]";
     static Pattern pattern_parameters = Pattern.compile(PATTERN_PARAMETERS, Pattern.CASE_INSENSITIVE);
+
+    // Patterns for regular Webi processing
     static final String PATTERN_DELTA_REASON = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Extraction of the object (?<objID>\\d*) because it('s a| has been) (?<cause>.*?) .*?";
     static Pattern pattern_delta_reason = Pattern.compile(PATTERN_DELTA_REASON, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_OPENING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Opening (?<objType>.*?): (?<objID>\\d*)#(?<objPath>.*?) \\(type:(?<pathType>.*?)\\)";
@@ -81,11 +104,13 @@ public class Helper {
     static Pattern pattern_closing = Pattern.compile(PATTERN_CLOSING);
     static final String PATTERN_INSERTING = "^(?<dateTime>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}) \\[pool-(?<pool>\\d*?)-thread-(?<thread>\\d*?)].*?Insert (?<objType>.*?) metadata in Eyes DB: (?<objID>\\d*) \\[Batch insertion time : (?<insertTime>\\d*) s\\]";
     static Pattern pattern_inserting = Pattern.compile(PATTERN_INSERTING);
+
     static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss,SSS";
     static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
 
 // XLSX output
     static XSSFWorkbook workbook;
+    static XSSFSheet miscSheet;
     static XSSFSheet parameterSheet;
     static XSSFSheet dataSheet;
     static XSSFDataFormat dateFormat;
@@ -96,7 +121,8 @@ public class Helper {
     private static File OutputFile = null;
     private static BufferedReader reader;
 
-    private static boolean hasParameters = false;
+    private static boolean hasAllMiscLines = false;
+    private static int miscRowIndex=1;
     private static final HashMap<Integer, QueuedItem> logObjects = new HashMap<>();
     private static final List<PatternEntry> patterns = new ArrayList<>();
 
@@ -118,16 +144,15 @@ public class Helper {
             // Freeze top row
             sheet.createFreezePane(0, 1);
             XSSFRow row = sheet.getRow(0);
-            int lastRow=sheet.getLastRowNum();
+            int lastRow = sheet.getLastRowNum();
             int lastCol = row.getLastCellNum() - 1;
-            sheet.setAutoFilter(new CellRangeAddress(0,lastRow,0,lastCol));
+            sheet.setAutoFilter(new CellRangeAddress(0, lastRow, 0, lastCol));
             for (int iY = 0; iY <= lastCol; iY++) {
                 sheet.autoSizeColumn(iY);
                 if (sheet.getColumnWidth(iY) > 40000) {
                     sheet.setColumnWidth(iY, 40000);
                 }
             }
-
         }
         try (FileOutputStream out = new FileOutputStream(OutputFile)) {
             workbook.write(out);
@@ -161,6 +186,7 @@ public class Helper {
         generalStyle = workbook.createCellStyle();
         generalStyle.setDataFormat((short) 0); // General
         //
+        miscSheet = workbook.createSheet("Misc");
         parameterSheet = workbook.createSheet("Parameters");
         dataSheet = workbook.createSheet("Data");
         dataRowIndex = 0;
@@ -203,6 +229,13 @@ public class Helper {
         cell.setCellValue(HDR_PARAM_NAME);
         cell = row.createCell(cellIndex++);
         cell.setCellValue(HDR_PARAM_VALUE);
+        row=miscSheet.createRow(0);
+        for(cellIndex=0;cellIndex<8;cellIndex++){
+        cell=row.createCell(cellIndex);
+        cell.setCellValue("C"+String.valueOf(cellIndex));
+            
+        }
+                
     }
 
     private static void LoadPatterns() {
@@ -308,13 +341,10 @@ public class Helper {
     }
 
     private static void ProcessLine(String InputLine) {
-// TODO first line must match some pattern
+        // TODO process misc and parameters until first "Remaining"
         LOGGER.log(Level.FINE, InputLine);
-        if (!hasParameters) {
-            Matcher matcher = pattern_parameters.matcher(InputLine);
-            if (matcher.find()) {
-                LOGGER.fine(matcher.group("eyesParam"));
-                ProcessParams(matcher.group("eyesParam"));
+        if (!hasAllMiscLines) {
+            if (CatchEarlyLine(InputLine)) {
                 return;
             }
         }
@@ -325,6 +355,7 @@ public class Helper {
         }
         Matcher matchOpening = pattern_opening.matcher(InputLine);
         if (matchOpening.find()) {
+            hasAllMiscLines = true;
             ProcessOpening(matchOpening);
             return;
         }
@@ -348,6 +379,160 @@ public class Helper {
         LOGGER.fine("Falling through - nothing found");
     }
 
+    private static boolean CatchEarlyLine(String InputLine) {
+        Matcher matcher;
+        matcher = pattern_parameters.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("eyesParam"));
+            ProcessParams(matcher.group("eyesParam"));
+            return true;
+        }
+        int cellIndex=0;
+        matcher = pattern_arguments.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("jobArgs"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("Job Arguments");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("jobArgs"));
+            return true;
+        }
+
+        matcher = pattern_process.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("process"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("Launched from");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("launch"));
+             cell = row.createCell(cellIndex++);
+            cell.setCellValue("Process");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("process"));
+            return true;
+        }
+        matcher = pattern_version360.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("version360"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("360 Version");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("version360"));
+            return true;
+        }
+        matcher = pattern_license.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("customer"));
+            LOGGER.fine(matcher.group("endDate"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("License for");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("customer"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Valid through");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("endDate"));
+            return true;
+        }
+        matcher = pattern_bobj_versions.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("versCMS"));
+            LOGGER.fine(matcher.group("versSDK"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("BOBJ version");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("versCMS"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("SDK");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("versSDK"));
+            return true;
+        }
+        matcher = pattern_cluster_snapshot_id.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("cluster"));
+            LOGGER.fine(matcher.group("boVersion"));
+            LOGGER.fine(matcher.group("addReplace"));
+            LOGGER.fine(matcher.group("permID"));
+            LOGGER.fine(matcher.group("snapID"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("User@Cluster Name");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("cluster"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("BO Version");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("boVersion"));
+            row = miscSheet.createRow(miscRowIndex++);
+            cellIndex=0;
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Mode");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("addReplace"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("PERM_ID");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("permID"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("SNAPSHOT_ID");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("snapID"));
+            return true;
+        }
+        matcher = pattern_load_mode.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("lastLoad"));
+            LOGGER.fine(matcher.group("selectLoad"));
+            LOGGER.fine(matcher.group("actualLoad"));
+            LOGGER.fine(matcher.group("lastDate"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("Previous Result");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("lastLoad"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Last Snapshot Date");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("lastDate"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Selected Mode");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("selectLoad"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Actual Mode");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("actualLoad"));
+            return true;
+        }
+        matcher = pattern_previous_snapshot.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("previousID"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("Copying Snapshot");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("previousID"));
+            return true;
+        }
+        matcher = pattern_restful.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("restURL"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("RESTful URL");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("restURL"));
+            return true;
+        }
+        return false;
+    }
+
     private static void ProcessParams(String allParams) {
         LOGGER.fine("Starting Parameters Processing");
         XSSFRow row = parameterSheet.createRow(0);
@@ -356,7 +541,6 @@ public class Helper {
         cell = row.createCell(1);
         cell.setCellValue(HDR_PARAM_VALUE);
 
-        hasParameters = true;
         String param[] = allParams.split(" -", -1);
         int rowIndex = 0;
         for (String oneParam : param) {
@@ -512,21 +696,9 @@ public class Helper {
         cell = row.createCell(cellIndex++, CellType.STRING);
         cell.setCellValue(logObject.getDeltaCause());
         CreateTimeCell(row, logObject.getDeltaTime(), cellIndex++);
-//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-//        cell.setCellValue(logObject.getDeltaTime());
-//        cell.setCellStyle(dateStyle);
         CreateTimeCell(row, logObject.getOpenTime(), cellIndex++);
-//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-//        cell.setCellValue(logObject.getOpenTime());
-//        cell.setCellStyle(dateStyle);
         CreateTimeCell(row, logObject.getCloseTime(), cellIndex++);
-//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-//        cell.setCellValue(logObject.getCloseTime());
-//        cell.setCellStyle(dateStyle);
         CreateTimeCell(row, logObject.getInsertTime(), cellIndex++);
-//        cell = row.createCell(cellIndex++, CellType.NUMERIC);
-//        cell.setCellValue(logObject.getInsertTime());
-//        cell.setCellStyle(dateStyle);
         if (logObject.getDeltaCause().isEmpty() || logObject.openTime.equals(LocalDateTime.MIN)) {
             row.createCell(cellIndex++, CellType.BLANK);
         } else {
