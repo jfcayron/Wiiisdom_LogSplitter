@@ -94,9 +94,6 @@
             </Property>
             <Property name="enabled" type="boolean" value="false"/>
           </Properties>
-          <Events>
-            <EventHandler event="focusLost" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="onTxtSourceLogFocusOut"/>
-          </Events>
         </Component>
         <Component class="javax.swing.JTextField" name="txtOutFolder">
           <Properties>
@@ -113,6 +110,7 @@
           </Properties>
           <Events>
             <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="onBrowseOutFolderClicked"/>
+            <EventHandler event="keyPressed" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="btnOutFolderKeyPressed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnSourceLog">
@@ -121,6 +119,7 @@
           </Properties>
           <Events>
             <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="onBrowseSourceClick"/>
+            <EventHandler event="keyPressed" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="btnSourceLogKeyPressed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnExecute">
@@ -129,6 +128,7 @@
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="onExecuteClicked"/>
+            <EventHandler event="keyPressed" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="btnExecuteKeyPressed"/>
           </Events>
         </Component>
       </SubComponents>

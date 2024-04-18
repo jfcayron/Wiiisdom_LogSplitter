@@ -24,7 +24,7 @@ public class LogSplitterUI extends javax.swing.JFrame {
      */
     public LogSplitterUI() {
         initComponents();
-        SetExecute();
+        enableExecuteButton();
         CreateChoosers();
     }
 
@@ -55,11 +55,6 @@ public class LogSplitterUI extends javax.swing.JFrame {
 
         txtSourceLog.setDisabledTextColor(new java.awt.Color(0, 0, 0));
         txtSourceLog.setEnabled(false);
-        txtSourceLog.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                onTxtSourceLogFocusOut(evt);
-            }
-        });
 
         txtOutFolder.setActionCommand("<Not Set>");
         txtOutFolder.setDisabledTextColor(new java.awt.Color(0, 0, 0));
@@ -71,6 +66,11 @@ public class LogSplitterUI extends javax.swing.JFrame {
                 onBrowseOutFolderClicked(evt);
             }
         });
+        btnOutFolder.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                btnOutFolderKeyPressed(evt);
+            }
+        });
 
         btnSourceLog.setText("Browse ...");
         btnSourceLog.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -78,11 +78,21 @@ public class LogSplitterUI extends javax.swing.JFrame {
                 onBrowseSourceClick(evt);
             }
         });
+        btnSourceLog.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                btnSourceLogKeyPressed(evt);
+            }
+        });
 
         btnExecute.setText("Split");
         btnExecute.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 onExecuteClicked(evt);
+            }
+        });
+        btnExecute.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                btnExecuteKeyPressed(evt);
             }
         });
 
@@ -140,7 +150,39 @@ public class LogSplitterUI extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void onBrowseSourceClick(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_onBrowseSourceClick
-        File path = new File(preferences.get("InputDir",  System.getProperty("user.dir")));
+        browseSource();
+    }//GEN-LAST:event_onBrowseSourceClick
+
+    private void onBrowseOutFolderClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_onBrowseOutFolderClicked
+        browseOutput();
+    }//GEN-LAST:event_onBrowseOutFolderClicked
+
+    private void onExecuteClicked(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onExecuteClicked
+        execute();
+    }//GEN-LAST:event_onExecuteClicked
+
+    private void btnSourceLogKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_btnSourceLogKeyPressed
+        if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+            browseSource();
+        }
+    }//GEN-LAST:event_btnSourceLogKeyPressed
+
+    private void btnOutFolderKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_btnOutFolderKeyPressed
+        if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+            browseOutput();
+        }
+    }//GEN-LAST:event_btnOutFolderKeyPressed
+
+    private void btnExecuteKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_btnExecuteKeyPressed
+        execute();
+    }//GEN-LAST:event_btnExecuteKeyPressed
+
+    private void enableExecuteButton() {
+        btnExecute.setEnabled(hasInput && hasOutput);
+    }
+
+    private void browseSource() {
+        File path = new File(preferences.get("InputDir", System.getProperty("user.dir")));
         inputChooser.setCurrentDirectory(path);
         int returnVal = inputChooser.showOpenDialog(pnlBase);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -148,12 +190,13 @@ public class LogSplitterUI extends javax.swing.JFrame {
             Helper.setInputFile(file);
             txtSourceLog.setText(file.getAbsolutePath());
             hasInput = true;
-            SetExecute();
+            enableExecuteButton();
             preferences.put("InputDir", file.getParent());
         }
-    }//GEN-LAST:event_onBrowseSourceClick
+        btnOutFolder.requestFocusInWindow();
+    }
 
-    private void onBrowseOutFolderClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_onBrowseOutFolderClicked
+    private void browseOutput() {
         File path = new File(preferences.get("OutputDir", System.getProperty("user.dir")));
         outputChooser.setCurrentDirectory(path);
         int returnVal = outputChooser.showSaveDialog(pnlBase);
@@ -167,12 +210,13 @@ public class LogSplitterUI extends javax.swing.JFrame {
             Helper.setOutputFile(file);
             txtOutFolder.setText(fileName);
             hasOutput = true;
-            SetExecute();
+            enableExecuteButton();
             preferences.put("OutputDir", file.getParent());
         }
-    }//GEN-LAST:event_onBrowseOutFolderClicked
+        btnExecute.requestFocusInWindow();
+    }
 
-    private void onExecuteClicked(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onExecuteClicked
+    private void execute() {
         try {
             Helper.RunFile();
         } catch (IOException ex) {
@@ -183,14 +227,6 @@ public class LogSplitterUI extends javax.swing.JFrame {
                 "Process Complete",
                 JOptionPane.INFORMATION_MESSAGE);
         System.exit(0);
-    }//GEN-LAST:event_onExecuteClicked
-
-    private void onTxtSourceLogFocusOut(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_onTxtSourceLogFocusOut
-        // TODO add your handling code here:
-    }//GEN-LAST:event_onTxtSourceLogFocusOut
-
-    private void SetExecute() {
-        btnExecute.setEnabled(hasInput && hasOutput);
     }
 
     private void CreateChoosers() {
