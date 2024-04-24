@@ -1,1 +1,1 @@
-java -DlogLevel=info -DpatternFile=C:\Projects\LogSplitter\Patterns.xlsx -jar C:\Projects\LogSplitter\target\LogSplitter-1.0.jar
+java -DlogLevel=info -Xms6g -Xmx8g -DpatternFile=C:\Projects\LogSplitter\Patterns.xlsx -jar C:\Projects\LogSplitter\target\LogSplitter-1.0.jar

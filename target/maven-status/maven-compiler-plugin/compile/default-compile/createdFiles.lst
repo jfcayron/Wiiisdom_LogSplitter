@@ -1,11 +1,13 @@
-com\wiiisdom\logsplitter\LogSplitterUI$1.class
 com\wiiisdom\logsplitter\LogSplitterUI.class
 com\wiiisdom\logsplitter\Helper$1.class
 com\wiiisdom\logsplitter\LogSplitterUI$3.class
+com\wiiisdom\logsplitter\LogSplitterUI$5.class
 com\wiiisdom\logsplitter\Helper$Field.class
-com\wiiisdom\logsplitter\Helper$MyFormatter.class
 com\wiiisdom\logsplitter\Helper$PatternEntry.class
-com\wiiisdom\logsplitter\LogSplitterUI$2.class
 com\wiiisdom\logsplitter\Helper$QueuedItem.class
 com\wiiisdom\logsplitter\Helper.class
 com\wiiisdom\logsplitter\LogSplitterUI$4.class
+com\wiiisdom\logsplitter\LogSplitterUI$1.class
+com\wiiisdom\logsplitter\Helper$MyFormatter.class
+com\wiiisdom\logsplitter\LogSplitterUI$2.class
+com\wiiisdom\logsplitter\LogSplitterUI$6.class
