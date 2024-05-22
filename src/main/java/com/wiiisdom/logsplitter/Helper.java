@@ -82,10 +82,12 @@ public class Helper {
     static Pattern pattern_license = Pattern.compile(PATTERN_LICENSE, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_BOBJ_VERSIONS = ".*CMS version: (?<versCMS>.*?), SDK Version: (?<versSDK>.*?)$";
     static Pattern pattern_bobj_versions = Pattern.compile(PATTERN_BOBJ_VERSIONS, Pattern.CASE_INSENSITIVE);
-    static final String PATTERN_CLUSTER_SNAPSHOT_ID = ".*Config: Cluster: (?<cluster>.*?), BOVersion: (?<boVersion>.*?); Snapshot: (?<addReplace>.*?); SNAPSHOT_PERM_ID: (?<permID>.*?)\\(SNAPSHOT_ID: (?<snapID>.*?)\\)$";
+    static final String PATTERN_CLUSTER_SNAPSHOT_ID = ".*Config: Cluster: (?<cluster>.*?), BOVersion: (?<boVersion>.*?); Snapshot: (?<addReplace>.*?); SNAPSHOT_PERM_ID: (?<permID>.*?)\\(SNAPSHOT_ID: (?<snapID>.*?)\\)";
     static Pattern pattern_cluster_snapshot_id = Pattern.compile(PATTERN_CLUSTER_SNAPSHOT_ID, Pattern.CASE_INSENSITIVE);
-    static final String PATTERN_LOAD_MODE = ".*Loading Mode Choosing: lastResult==(?<lastLoad>.*?), loadingMode==(?<selectLoad>.*?) >> (?<actualLoad>.*?) mode \\[last snapshot date: (?<lastDate>.*?)\\]";
+    static final String PATTERN_LOAD_MODE = ".*Loading Mode Choosing: lastResult==(?<lastResult>.*?), loadingMode==(?<selectLoad>.*?) >> (?<actualLoad>.*?) mode$";
     static Pattern pattern_load_mode = Pattern.compile(PATTERN_LOAD_MODE, Pattern.CASE_INSENSITIVE);
+    static final String PATTERN_LOAD_MODE_PREV = ".*Loading Mode Choosing: lastResult==(?<lastResult>.*?), loadingMode==(?<selectLoad>.*?) >> (?<actualLoad>.*?) mode \\[last snapshot date: (?<lastDate>.*?)\\]";
+    static Pattern pattern_load_mode_prev = Pattern.compile(PATTERN_LOAD_MODE_PREV, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_PREVIOUS_SNAPSHOT = ".*Copying snapshot id (?<previousID>.*?)\\.\\.\\.";
     static Pattern pattern_previous_snapshot = Pattern.compile(PATTERN_PREVIOUS_SNAPSHOT, Pattern.CASE_INSENSITIVE);
     static final String PATTERN_RESTFUL = ".*URL found : (?<restURL>.*?)$";
@@ -444,11 +446,11 @@ public class Helper {
             LOGGER.fine(matcher.group("versSDK"));
             XSSFRow row = miscSheet.createRow(miscRowIndex++);
             XSSFCell cell = row.createCell(cellIndex++);
-            cell.setCellValue("BOBJ version");
+            cell.setCellValue("CMS version");
             cell = row.createCell(cellIndex++);
             cell.setCellValue(matcher.group("versCMS"));
             cell = row.createCell(cellIndex++);
-            cell.setCellValue("SDK");
+            cell.setCellValue("SDK version");
             cell = row.createCell(cellIndex++);
             cell.setCellValue(matcher.group("versSDK"));
             return true;
@@ -487,7 +489,31 @@ public class Helper {
         }
         matcher = pattern_load_mode.matcher(InputLine);
         if (matcher.find()) {
-            LOGGER.fine(matcher.group("lastLoad"));
+            LOGGER.fine(matcher.group("lastResult"));
+            LOGGER.fine(matcher.group("selectLoad"));
+            LOGGER.fine(matcher.group("actualLoad"));
+            XSSFRow row = miscSheet.createRow(miscRowIndex++);
+            XSSFCell cell = row.createCell(cellIndex++);
+            cell.setCellValue("Previous Result");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("lastResult"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Last Snapshot Date");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("N/A");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Selected Mode");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("selectLoad"));
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue("Actual Mode");
+            cell = row.createCell(cellIndex++);
+            cell.setCellValue(matcher.group("actualLoad"));
+            return true;
+        }
+        matcher = pattern_load_mode_prev.matcher(InputLine);
+        if (matcher.find()) {
+            LOGGER.fine(matcher.group("lastResult"));
             LOGGER.fine(matcher.group("selectLoad"));
             LOGGER.fine(matcher.group("actualLoad"));
             LOGGER.fine(matcher.group("lastDate"));
@@ -495,7 +521,7 @@ public class Helper {
             XSSFCell cell = row.createCell(cellIndex++);
             cell.setCellValue("Previous Result");
             cell = row.createCell(cellIndex++);
-            cell.setCellValue(matcher.group("lastLoad"));
+            cell.setCellValue(matcher.group("lastResult"));
             cell = row.createCell(cellIndex++);
             cell.setCellValue("Last Snapshot Date");
             cell = row.createCell(cellIndex++);
